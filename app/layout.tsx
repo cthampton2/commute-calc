@@ -15,9 +15,47 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CommuteCalc - Compare Commute Times",
+  title: {
+    default: "CommuteCalc - Compare Commute Times",
+    template: "%s | CommuteCalc",
+  },
   description:
     "Compare driving commute times from multiple home locations to your workplace and points of interest. Find the best place to live based on your daily commute.",
+  metadataBase: new URL("https://commutecalc.com"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "CommuteCalc - Compare Commute Times",
+    description:
+      "Compare driving commute times from multiple home locations to your workplace. Find the best place to live based on your daily commute.",
+    url: "https://commutecalc.com",
+    siteName: "CommuteCalc",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CommuteCalc - Compare Commute Times",
+    description:
+      "Compare driving commute times from multiple home locations to your workplace. Find the best place to live based on your daily commute.",
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  keywords: [
+    "commute calculator",
+    "compare commute times",
+    "commute comparison tool",
+    "best place to live commute",
+    "driving time calculator",
+    "commute distance calculator",
+    "real estate commute tool",
+    "find home by commute",
+  ],
 };
 
 export default function RootLayout({

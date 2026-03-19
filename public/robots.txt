@@ -3,4 +3,4 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://realestatetoolkit.com/sitemap.xml
+Sitemap: https://commutecalc.com/sitemap.xml
