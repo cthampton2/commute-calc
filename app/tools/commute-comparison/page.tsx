@@ -370,6 +370,18 @@ export default function CommuteComparisonPage() {
                 The best time to use a commute time calculator is during a home search, before signing a lease, or when evaluating a job offer. Commute time is one of the biggest factors in daily quality of life — a 45-minute one-way commute adds over 7 hours a week to your workday. Mapping your commute before committing can save years of frustration.
               </p>
             </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-300 mb-2">How does CommuteCalc compare to Google Maps for commute time?</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Google Maps is great for checking a single route, but it can only show one origin-to-destination commute at a time. CommuteCalc lets you compare commute times from multiple home addresses to multiple destinations simultaneously in one view — something you&apos;d otherwise have to check manually, one tab at a time. Use CommuteCalc for the comparison, then use Google Maps during peak hours to verify traffic for your top choice.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-300 mb-2">What is a commute distance map?</h3>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                A commute distance map visualizes driving distances between home and work locations on an interactive map. CommuteCalc shows both driving time and distance for every home-to-destination pair, plotted on a map so you can see the actual routes. This helps you understand not just how far a commute is in miles, but how long it actually takes to drive.
+              </p>
+            </div>
           </div>
         </div>
 
