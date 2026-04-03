@@ -4,3 +4,4 @@ Allow: /
 
 # Sitemap location
 Sitemap: https://commutecalc.com/sitemap.xml
+Sitemap: https://www.commutecalc.com/sitemap.xml
