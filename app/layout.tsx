@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   description:
     "Compare driving commute times from multiple home locations to your workplace and points of interest. Find the best place to live based on your daily commute.",
-  metadataBase: new URL("https://commutecalc.com"),
+  metadataBase: new URL("https://www.commutecalc.com"),
   alternates: {
     canonical: "/",
   },
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "CommuteCalc - Compare Commute Times",
     description:
       "Compare driving commute times from multiple home locations to your workplace. Find the best place to live based on your daily commute.",
-    url: "https://commutecalc.com",
+    url: "https://www.commutecalc.com",
     siteName: "CommuteCalc",
     type: "website",
     locale: "en_US",
