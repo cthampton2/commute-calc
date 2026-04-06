@@ -102,11 +102,15 @@ async function searchNearestBusiness(
       bounded: "1", // Strictly limit to viewbox
     });
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     const response = await fetch(`${NOMINATIM_BASE_URL}?${params.toString()}`, {
       headers: {
         "User-Agent": "RealEstateToolkit/1.0",
       },
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error(`Nominatim search failed: ${response.status}`);
@@ -179,7 +183,10 @@ export function useRouteCalculation(): UseRouteCalculationResult {
         const coordinates = `${from.coordinates.lon},${from.coordinates.lat};${toCoordinates.lon},${toCoordinates.lat}`;
         const url = `${OSRM_BASE_URL}/${coordinates}?overview=full&geometries=polyline`;
 
-        const response = await fetch(url);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           console.error(`Route error ${from.nickname} -> ${toNickname}: ${response.status}`);
