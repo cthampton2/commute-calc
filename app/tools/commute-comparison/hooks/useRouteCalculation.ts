@@ -10,30 +10,18 @@ import {
   Coordinates,
 } from "../types";
 import {
-  decodePolyline,
   createViewbox,
   calculateDistanceMeters,
   formatNominatimAddress,
   extractNominatimBusinessName,
 } from "../utils";
 
-// OSRM public demo server - no API key required
-// Rate limit: 1 request per second
-const OSRM_BASE_URL = "https://router.project-osrm.org/route/v1/driving";
+const ORS_BASE_URL = "https://api.openrouteservice.org/v2/directions/driving-car";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
 
 // Find-nearest configuration
 const FIND_NEAREST_RADIUS_MILES = 10;
 const FIND_NEAREST_MAX_CANDIDATES = 5;
-
-interface OSRMResponse {
-  code: string;
-  routes: Array<{
-    distance: number; // meters
-    duration: number; // seconds
-    geometry: string; // encoded polyline
-  }>;
-}
 
 interface UseRouteCalculationResult {
   matrix: CommuteMatrix;
@@ -103,7 +91,7 @@ async function searchNearestBusiness(
     });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
     const response = await fetch(`${NOMINATIM_BASE_URL}?${params.toString()}`, {
       headers: {
         "User-Agent": "RealEstateToolkit/1.0",
@@ -179,13 +167,16 @@ export function useRouteCalculation(): UseRouteCalculationResult {
       toNickname: string
     ): Promise<RouteResult | null> => {
       try {
-        // OSRM expects coordinates as lon,lat;lon,lat
-        const coordinates = `${from.coordinates.lon},${from.coordinates.lat};${toCoordinates.lon},${toCoordinates.lat}`;
-        const url = `${OSRM_BASE_URL}/${coordinates}?overview=full&geometries=polyline`;
+        const url = `${ORS_BASE_URL}?start=${from.coordinates.lon},${from.coordinates.lat}&end=${toCoordinates.lon},${toCoordinates.lat}`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-        const response = await fetch(url, { signal: controller.signal });
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const response = await fetch(url, {
+          headers: {
+            Authorization: process.env.NEXT_PUBLIC_ORS_API_KEY ?? "",
+          },
+          signal: controller.signal,
+        });
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -193,21 +184,25 @@ export function useRouteCalculation(): UseRouteCalculationResult {
           return null;
         }
 
-        const data: OSRMResponse = await response.json();
+        const data = await response.json();
+        const feature = data.features?.[0];
+        const summary = feature?.properties?.summary;
+        const coords: [number, number][] = feature?.geometry?.coordinates ?? [];
 
-        if (data.code !== "Ok" || !data.routes || data.routes.length === 0) {
+        if (!summary || coords.length === 0) {
           console.error(`No route found ${from.nickname} -> ${toNickname}`);
           return null;
         }
 
-        const route = data.routes[0];
+        // ORS returns [lon, lat]; our RouteResult type expects [lat, lon]
+        const geometry: [number, number][] = coords.map(([lon, lat]) => [lat, lon]);
 
         return {
           fromId: from.id,
           toId: toId,
-          durationSeconds: route.duration,
-          distanceMeters: route.distance,
-          geometry: decodePolyline(route.geometry),
+          durationSeconds: summary.duration,
+          distanceMeters: summary.distance,
+          geometry,
         };
       } catch (err) {
         console.error(`Failed to fetch route ${from.nickname} -> ${toNickname}:`, err);
@@ -376,6 +371,12 @@ export function useRouteCalculation(): UseRouteCalculationResult {
             newMatrix[fromId] = {};
           }
           newMatrix[fromId][toId] = result;
+        }
+
+        const allFailed = routeResults.length > 0 && routeResults.every(({ result }) => result === null);
+        if (allFailed) {
+          setError("Could not reach the routing service. Please check your connection and try again.");
+          return;
         }
 
         setMatrix(newMatrix);

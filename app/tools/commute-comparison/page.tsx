@@ -309,7 +309,7 @@ export default function CommuteComparisonPage() {
               </button>
               <span className="text-xs text-slate-600">
                 Routing by{" "}
-                <a href="https://project-osrm.org/" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-300 underline underline-offset-2 transition">OSRM</a>
+                <a href="https://openrouteservice.org/" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-300 underline underline-offset-2 transition">OpenRouteService</a>
                 {" "}·{" "}
                 <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-slate-300 underline underline-offset-2 transition">OSM</a>
               </span>
