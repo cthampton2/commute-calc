@@ -151,27 +151,29 @@ export default function CommuteComparisonPage() {
         </div>
       </nav>
 
-      <div className="max-w-2xl mx-auto px-4 pt-10 pb-20">
+      <div className="max-w-2xl mx-auto px-4 pt-6 pb-20">
 
-        {/* Hero */}
-        <div className="mb-12">
-          <p className="text-xs font-mono text-blue-400 tracking-[0.2em] uppercase mb-3">
-            Free Commute Map Calculator
-          </p>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-[1.05] mb-4">
-            Before you sign<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400">
-              know your commute.
-            </span>
-          </h1>
-          <p className="text-slate-400 text-base leading-relaxed max-w-sm">
-            Google Maps shows one route at a time. This shows all of them — every home, every destination, one matrix. Pick the address that wins.
-          </p>
+        {/* Hero — compact app header, not a landing page */}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight mb-1">
+              Before you sign,{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400">
+                know your commute.
+              </span>
+            </h1>
+            <p className="text-slate-500 text-xs leading-relaxed">
+              Add homes and destinations below — every route calculated at once.
+            </p>
+          </div>
+          <span className="hidden sm:inline-flex shrink-0 items-center gap-1 px-2 py-1 rounded-md border border-blue-500/20 bg-blue-950/30 text-[10px] font-mono text-blue-400 tracking-wide whitespace-nowrap mt-0.5">
+            Free · No sign-up
+          </span>
         </div>
 
         {/* Step 1 */}
         <div className="mb-2">
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3 mb-4">
             <span className="flex h-6 w-6 items-center justify-center rounded border border-blue-500/40 bg-blue-950/40 text-xs font-mono font-bold text-blue-400 flex-shrink-0">
               1
             </span>
@@ -192,11 +194,11 @@ export default function CommuteComparisonPage() {
           />
         </div>
 
-        <div className="my-8 border-t border-slate-800/60" />
+        <div className="my-5 border-t border-slate-800/60" />
 
         {/* Step 2 */}
         <div className="mb-2">
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3 mb-4">
             <span className="flex h-6 w-6 items-center justify-center rounded border border-emerald-500/40 bg-emerald-950/40 text-xs font-mono font-bold text-emerald-400 flex-shrink-0">
               2
             </span>
@@ -227,7 +229,7 @@ export default function CommuteComparisonPage() {
         )}
 
         {/* CTA */}
-        <div className="mt-10">
+        <div className="mt-6">
           <button
             onClick={handleCalculate}
             disabled={!canCalculate}
