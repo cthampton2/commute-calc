@@ -3,57 +3,59 @@
 import { useState, useEffect, useCallback } from "react";
 import { NominatimResult, Coordinates } from "../types";
 
-const GEOCODIO_BASE_URL = "https://api.geocod.io/v1.7/geocode";
-
-interface GeocodioAddressComponents {
-  number?: string;
-  predirectional?: string;
-  street?: string;
-  suffix?: string;
-  postdirectional?: string;
-  formatted_street?: string;
-  city?: string;
-  county?: string;
-  state?: string;
-  zip?: string;
-  country?: string;
+interface MapboxContext {
+  id: string;
+  text: string;
+  short_code?: string;
 }
 
-interface GeocodioResult {
-  address_components: GeocodioAddressComponents;
-  formatted_address: string;
-  location?: {
-    lat: number;
-    lng: number;
+interface MapboxFeature {
+  id: string;
+  place_name: string;
+  text: string;
+  center: [number, number]; // [lon, lat]
+  properties: {
+    address?: string; // house number
   };
+  context?: MapboxContext[];
 }
 
-interface GeocodioResponse {
-  results: GeocodioResult[];
+interface MapboxResponse {
+  features: MapboxFeature[];
 }
 
-function geocodioToNominatim(result: GeocodioResult, index: number): NominatimResult {
-  const c = result.address_components;
+function getContext(feature: MapboxFeature, prefix: string): string | undefined {
+  return feature.context?.find((c) => c.id.startsWith(prefix))?.text;
+}
+
+function mapboxToNominatim(feature: MapboxFeature, index: number): NominatimResult {
+  const houseNumber = feature.properties?.address;
+  const street = feature.text;
+  const city = getContext(feature, "place");
+  const state = getContext(feature, "region");
+  const postcode = getContext(feature, "postcode");
+  const country = getContext(feature, "country");
+
   return {
     place_id: index,
     licence: "",
     osm_type: "N",
     osm_id: index,
-    lat: String(result.location?.lat ?? 0),
-    lon: String(result.location?.lng ?? 0),
-    display_name: result.formatted_address,
+    lat: String(feature.center[1]),
+    lon: String(feature.center[0]),
+    display_name: feature.place_name,
     address: {
-      house_number: c.number,
-      road: c.formatted_street,
-      city: c.city,
-      state: c.state,
-      postcode: c.zip,
-      country: c.country,
+      house_number: houseNumber,
+      road: street,
+      city,
+      state,
+      postcode,
+      country,
     },
     boundingbox: ["0", "0", "0", "0"],
     name: undefined,
-    type: "geocodio",
-    class: "geocodio",
+    type: "mapbox",
+    class: "mapbox",
   };
 }
 
@@ -74,7 +76,7 @@ interface UsePhotonSearchResult {
 export function usePhotonSearch(
   options: UsePhotonSearchOptions = {}
 ): UsePhotonSearchResult {
-  const { limit = 5, debounceMs = 300 } = options;
+  const { biasLocation = null, limit = 5, debounceMs = 300 } = options;
 
   const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,20 +104,21 @@ export function usePhotonSearch(
       try {
         const params = new URLSearchParams({
           q: debouncedQuery,
-          api_key: process.env.NEXT_PUBLIC_GEOCODIO_API_KEY ?? "",
           limit: limit.toString(),
-          country: "us",
         });
 
-        const response = await fetch(`${GEOCODIO_BASE_URL}?${params.toString()}`, {
+        if (biasLocation) {
+          params.append("proximity", `${biasLocation.lon},${biasLocation.lat}`);
+        }
+
+        const response = await fetch(`/api/geocode?${params.toString()}`, {
           signal: controller.signal,
         });
 
         if (!response.ok) throw new Error("Failed to fetch address suggestions");
 
-        const data: GeocodioResponse = await response.json();
-        const mapped = (data.results || []).map(geocodioToNominatim);
-        setSuggestions(mapped);
+        const data: MapboxResponse = await response.json();
+        setSuggestions((data.features || []).map(mapboxToNominatim));
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "An error occurred");
@@ -127,7 +130,7 @@ export function usePhotonSearch(
 
     fetchSuggestions();
     return () => controller.abort();
-  }, [debouncedQuery, limit]);
+  }, [debouncedQuery, biasLocation, limit]);
 
   const search = useCallback((newQuery: string) => setQuery(newQuery), []);
 
