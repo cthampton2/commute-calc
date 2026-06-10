@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Location, SelectedRoute } from "./types";
@@ -29,6 +29,8 @@ export default function CommuteComparisonPage() {
   const [showMap, setShowMap] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
 
   const {
     matrix,
@@ -100,6 +102,21 @@ export default function CommuteComparisonPage() {
       setSelectedRoute({ fromId: startingLocations[0].id, toId: pointsOfInterest[0].id });
     }
   }, [hasResults, selectedRoute, startingLocations, pointsOfInterest]);
+
+  // Auto-show map and scroll to results when calculation completes
+  useEffect(() => {
+    if (isCalculating) {
+      hasScrolledRef.current = false;
+      return;
+    }
+    if (hasResults && !hasScrolledRef.current) {
+      hasScrolledRef.current = true;
+      setShowMap(true);
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    }
+  }, [isCalculating, hasResults]);
 
   const handleAddStarting = (location: Location) => { setStartingLocations((p) => [...p, location]); clearMatrix(); };
   const handleUpdateStarting = (id: string, updates: Partial<Location>) => { setStartingLocations((p) => p.map((l) => l.id === id ? { ...l, ...updates } : l)); clearMatrix(); };
@@ -283,7 +300,7 @@ export default function CommuteComparisonPage() {
 
         {/* Results */}
         {hasResults && (
-          <div className="mt-10">
+          <div className="mt-10" ref={resultsRef}>
             <div className="flex items-center gap-3 mb-5">
               <span className="flex h-6 w-6 items-center justify-center rounded border border-amber-500/40 bg-amber-950/40 text-xs font-mono font-bold text-amber-400 flex-shrink-0">
                 3
@@ -305,7 +322,7 @@ export default function CommuteComparisonPage() {
                 <span className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${showMap ? "bg-blue-600" : "bg-slate-700"}`}>
                   <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${showMap ? "translate-x-4" : "translate-x-0.5"}`} />
                 </span>
-                Show Map
+                {showMap ? "Hide Map" : "Show Map"}
               </button>
               <span className="text-xs text-slate-600">
                 Routing by{" "}
