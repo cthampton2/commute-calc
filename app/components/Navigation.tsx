@@ -2,15 +2,15 @@ import Link from "next/link";
 
 export default function Navigation() {
   return (
-    <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
+    <nav className="bg-slate-950 border-b border-slate-800/60 sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between h-12">
           <Link
             href="/"
-            className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition"
+            className="flex items-center gap-2 text-sm font-semibold text-white hover:text-blue-400 transition"
           >
             <svg
-              className="w-6 h-6 text-blue-600 dark:text-blue-400"
+              className="w-4 h-4 text-blue-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -32,7 +32,7 @@ export default function Navigation() {
           </Link>
           <Link
             href="/privacy"
-            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition"
+            className="text-xs text-slate-500 hover:text-slate-300 transition"
           >
             Privacy Policy
           </Link>

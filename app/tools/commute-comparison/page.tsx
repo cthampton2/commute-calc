@@ -148,7 +148,7 @@ export default function CommuteComparisonPage() {
             </span>
           </h1>
           <p className="text-slate-400 text-base leading-relaxed max-w-sm">
-            Add homes you&apos;re considering and your workplace or other destinations. We&apos;ll calculate driving times and map every commute route so the best option is obvious.
+            Google Maps shows one route at a time. This shows all of them — every home, every destination, one matrix. Pick the address that wins.
           </p>
         </div>
 
@@ -330,56 +330,64 @@ export default function CommuteComparisonPage() {
           </div>
         )}
 
-        {/* FAQ / SEO Content */}
+        {/* How it works */}
         <div className="mt-20 pt-10 border-t border-slate-800/60">
-          <h2 className="text-lg font-bold text-slate-200 mb-8">About the Commute Map Calculator</h2>
-          <div className="space-y-7">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">What is a commute map calculator?</h3>
+          <p className="text-xs font-mono text-slate-500 tracking-[0.2em] uppercase mb-6">How it works</p>
+          <div className="grid grid-cols-3 gap-4 mb-16">
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-mono text-blue-400 font-bold">01</span>
+              <p className="text-sm font-semibold text-slate-200">Add your homes</p>
+              <p className="text-xs text-slate-500 leading-relaxed">Enter every address you&apos;re deciding between. Label them anything — Apt A, House on Elm, whatever works.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-mono text-emerald-400 font-bold">02</span>
+              <p className="text-sm font-semibold text-slate-200">Add destinations</p>
+              <p className="text-xs text-slate-500 leading-relaxed">Work, gym, school, family — anywhere you drive regularly. Set how many times per week to see total commute time.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-mono text-amber-400 font-bold">03</span>
+              <p className="text-sm font-semibold text-slate-200">See the answer</p>
+              <p className="text-xs text-slate-500 leading-relaxed">Every route calculated at once. The fastest option highlights automatically. Click any cell to see that route on the map.</p>
+            </div>
+          </div>
+
+          {/* FAQ */}
+          <p className="text-xs font-mono text-slate-500 tracking-[0.2em] uppercase mb-6">Common questions</p>
+          <div className="space-y-6">
+            <div className="border-b border-slate-800/60 pb-6">
+              <h3 className="text-sm font-semibold text-slate-300 mb-1.5">What is a commute map calculator?</h3>
               <p className="text-sm text-slate-500 leading-relaxed">
                 A commute map calculator lets you enter multiple home addresses and destinations — like your workplace, gym, or school — and see the driving time between each pair plotted on an interactive map. Instead of checking Google Maps one route at a time, you get a side-by-side commute time comparison so you can instantly see which home has the shortest overall commute.
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">How do I compare commute times from multiple locations?</h3>
+            <div className="border-b border-slate-800/60 pb-6">
+              <h3 className="text-sm font-semibold text-slate-300 mb-1.5">How does CommuteCalc compare to Google Maps?</h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Add each home address you&apos;re considering under &ldquo;Homes You&apos;re Considering,&rdquo; then add your workplace and any other regular destinations under &ldquo;Where You Need to Go.&rdquo; Hit Calculate — the tool computes driving times for every combination and displays them in a matrix. Click any route to highlight it on the commute map.
+                Google Maps shows one route at a time. CommuteCalc computes every home-to-destination combination simultaneously and displays them in a single matrix — something you&apos;d otherwise spend 20 minutes doing manually across multiple tabs. Use CommuteCalc to find your best option, then verify rush-hour timing in Google Maps.
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">What is a commute radius map?</h3>
+            <div className="border-b border-slate-800/60 pb-6">
+              <h3 className="text-sm font-semibold text-slate-300 mb-1.5">How accurate are the commute times?</h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                A commute radius map shows all the areas you can reach within a certain drive time — for example, everywhere within a 30-minute drive of your office. CommuteCalc calculates point-to-point commute times between specific addresses, giving you exact driving times rather than a general radius. This is more useful when you&apos;re comparing specific homes or neighborhoods.
+                Times are based on OpenStreetMap road data and represent typical driving durations without real-time traffic. They&apos;re accurate for comparison purposes — if Apt A is 12 minutes shorter than Apt B here, it will be shorter in practice. For exact rush-hour times, cross-reference your top choice in Google Maps.
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">How accurate is the commute time calculator?</h3>
+            <div className="border-b border-slate-800/60 pb-6">
+              <h3 className="text-sm font-semibold text-slate-300 mb-1.5">Is this free? Do I need an account?</h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Commute times are calculated using OSRM (Open Source Routing Machine) with OpenStreetMap road data and represent typical driving durations without real-time traffic. Results are accurate for route planning purposes but may vary based on time of day, traffic conditions, and road changes. For rush-hour accuracy, cross-reference with Google Maps during peak hours.
+                Completely free, no account required. Your locations are saved in your browser so your session is there when you come back — nothing is stored on our servers.
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">Is this commute calculator free?</h3>
+            <div className="border-b border-slate-800/60 pb-6">
+              <h3 className="text-sm font-semibold text-slate-300 mb-1.5">When should I use this?</h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                Yes — CommuteCalc is completely free with no account required. Your locations are saved locally in your browser so your data stays private and your session is preserved if you close and reopen the tab.
+                Before signing a lease, making an offer on a house, or accepting a job in a new city. Commute time is one of the biggest quality-of-life factors people underestimate — a 45-minute one-way commute adds over 7 hours to your week, every week.
               </p>
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">When should I use a commute comparison tool?</h3>
+            <div className="pb-2">
+              <h3 className="text-sm font-semibold text-slate-300 mb-1.5">What is a commute radius map?</h3>
               <p className="text-sm text-slate-500 leading-relaxed">
-                The best time to use a commute time calculator is during a home search, before signing a lease, or when evaluating a job offer. Commute time is one of the biggest factors in daily quality of life — a 45-minute one-way commute adds over 7 hours a week to your workday. Mapping your commute before committing can save years of frustration.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">How does CommuteCalc compare to Google Maps for commute time?</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                Google Maps is great for checking a single route, but it can only show one origin-to-destination commute at a time. CommuteCalc lets you compare commute times from multiple home addresses to multiple destinations simultaneously in one view — something you&apos;d otherwise have to check manually, one tab at a time. Use CommuteCalc for the comparison, then use Google Maps during peak hours to verify traffic for your top choice.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-300 mb-2">What is a commute distance map?</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">
-                A commute distance map visualizes driving distances between home and work locations on an interactive map. CommuteCalc shows both driving time and distance for every home-to-destination pair, plotted on a map so you can see the actual routes. This helps you understand not just how far a commute is in miles, but how long it actually takes to drive.
+                A commute radius map shows every area reachable within a set drive time from a single point. CommuteCalc is different — it calculates exact point-to-point times between specific addresses. More useful when you already have specific homes in mind rather than exploring a region.
               </p>
             </div>
           </div>
