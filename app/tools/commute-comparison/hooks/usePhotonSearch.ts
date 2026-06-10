@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { NominatimResult, Coordinates } from "../types";
 
-const GEOCODIO_BASE_URL = "https://api.geocod.io/v1.7/autocomplete";
+const GEOCODIO_BASE_URL = "https://api.geocod.io/v1.7/geocode";
 
 interface GeocodioAddressComponents {
   number?: string;
