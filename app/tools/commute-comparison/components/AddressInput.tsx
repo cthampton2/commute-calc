@@ -64,7 +64,7 @@ export default function AddressInput({
   const { suggestions, isLoading, search, clearSuggestions } = usePhotonSearch({
     biasLocation,
     limit: 5,
-    debounceMs: 300,
+    debounceMs: 400,
   });
 
   useEffect(() => {

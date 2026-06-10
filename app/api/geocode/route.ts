@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     access_token: token,
     limit: "5",
     country: "us",
-    types: "address",
+    types: "address,poi",
     language: "en",
   });
 
@@ -74,7 +74,11 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        "Cache-Control": "public, max-age=600, s-maxage=600, stale-while-revalidate=3600",
+      },
+    });
   } catch {
     return NextResponse.json({ features: [] }, { status: 500 });
   }

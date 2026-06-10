@@ -13,9 +13,11 @@ interface MapboxFeature {
   id: string;
   place_name: string;
   text: string;
+  address?: string; // house number (top-level for address types)
   center: [number, number]; // [lon, lat]
   properties: {
-    address?: string; // house number
+    address?: string; // fallback location for house number in some responses
+    category?: string;
   };
   context?: MapboxContext[];
 }
@@ -29,9 +31,11 @@ function getContext(feature: MapboxFeature, prefix: string): string | undefined 
 }
 
 function mapboxToNominatim(feature: MapboxFeature, index: number): NominatimResult {
-  const houseNumber = feature.properties?.address;
-  const street = feature.text;
-  const city = getContext(feature, "place");
+  const isPOI = feature.id.startsWith("poi");
+  const houseNumber = feature.address ?? feature.properties?.address;
+  const street = isPOI ? undefined : feature.text;
+  const businessName = isPOI ? feature.text : undefined;
+  const city = getContext(feature, "place") ?? getContext(feature, "locality");
   const state = getContext(feature, "region");
   const postcode = getContext(feature, "postcode");
   const country = getContext(feature, "country");
@@ -53,9 +57,9 @@ function mapboxToNominatim(feature: MapboxFeature, index: number): NominatimResu
       country,
     },
     boundingbox: ["0", "0", "0", "0"],
-    name: undefined,
-    type: "mapbox",
-    class: "mapbox",
+    name: businessName,
+    type: isPOI ? "amenity" : "mapbox",
+    class: isPOI ? "amenity" : "mapbox",
   };
 }
 
@@ -90,7 +94,7 @@ export function usePhotonSearch(
   }, [query, debounceMs]);
 
   useEffect(() => {
-    if (!debouncedQuery || debouncedQuery.length < 2) {
+    if (!debouncedQuery || debouncedQuery.length < 3) {
       setSuggestions([]);
       return;
     }
