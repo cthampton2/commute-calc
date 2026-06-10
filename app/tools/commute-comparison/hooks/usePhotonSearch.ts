@@ -1,9 +1,61 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { NominatimResult, PhotonFeature, PhotonResponse, Coordinates } from "../types";
+import { NominatimResult, Coordinates } from "../types";
 
-const PHOTON_BASE_URL = "https://photon.komoot.io/api/";
+const GEOCODIO_BASE_URL = "https://api.geocod.io/v1.7/autocomplete";
+
+interface GeocodioAddressComponents {
+  number?: string;
+  predirectional?: string;
+  street?: string;
+  suffix?: string;
+  postdirectional?: string;
+  formatted_street?: string;
+  city?: string;
+  county?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+}
+
+interface GeocodioResult {
+  address_components: GeocodioAddressComponents;
+  formatted_address: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
+}
+
+interface GeocodioResponse {
+  results: GeocodioResult[];
+}
+
+function geocodioToNominatim(result: GeocodioResult, index: number): NominatimResult {
+  const c = result.address_components;
+  return {
+    place_id: index,
+    licence: "",
+    osm_type: "N",
+    osm_id: index,
+    lat: String(result.location?.lat ?? 0),
+    lon: String(result.location?.lng ?? 0),
+    display_name: result.formatted_address,
+    address: {
+      house_number: c.number,
+      road: c.formatted_street,
+      city: c.city,
+      state: c.state,
+      postcode: c.zip,
+      country: c.country,
+    },
+    boundingbox: ["0", "0", "0", "0"],
+    name: undefined,
+    type: "geocodio",
+    class: "geocodio",
+  };
+}
 
 interface UsePhotonSearchOptions {
   biasLocation?: Coordinates | null;
@@ -19,42 +71,10 @@ interface UsePhotonSearchResult {
   clearSuggestions: () => void;
 }
 
-function photonToNominatim(feature: PhotonFeature, index: number): NominatimResult {
-  const p = feature.properties;
-  const streetPart =
-    p.housenumber && p.street
-      ? `${p.housenumber} ${p.street}`
-      : p.street || "";
-  const parts = [streetPart, p.city, p.state, p.postcode].filter(Boolean);
-  const displayName = p.name ? `${p.name}, ${parts.join(", ")}` : parts.join(", ");
-
-  return {
-    place_id: p.osm_id || index,
-    licence: "",
-    osm_type: "N",
-    osm_id: p.osm_id || index,
-    lat: String(feature.geometry.coordinates[1]),
-    lon: String(feature.geometry.coordinates[0]),
-    display_name: displayName,
-    address: {
-      house_number: p.housenumber,
-      road: p.street,
-      city: p.city,
-      state: p.state,
-      postcode: p.postcode,
-      country: p.country,
-    },
-    boundingbox: ["0", "0", "0", "0"],
-    name: p.name,
-    type: "photon",
-    class: "photon",
-  };
-}
-
 export function usePhotonSearch(
   options: UsePhotonSearchOptions = {}
 ): UsePhotonSearchResult {
-  const { biasLocation = null, limit = 5, debounceMs = 300 } = options;
+  const { limit = 5, debounceMs = 300 } = options;
 
   const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,23 +102,19 @@ export function usePhotonSearch(
       try {
         const params = new URLSearchParams({
           q: debouncedQuery,
+          api_key: process.env.NEXT_PUBLIC_GEOCODIO_API_KEY ?? "",
           limit: limit.toString(),
-          lang: "en",
+          country: "us",
         });
 
-        if (biasLocation) {
-          params.append("lat", String(biasLocation.lat));
-          params.append("lon", String(biasLocation.lon));
-        }
-
-        const response = await fetch(`${PHOTON_BASE_URL}?${params.toString()}`, {
+        const response = await fetch(`${GEOCODIO_BASE_URL}?${params.toString()}`, {
           signal: controller.signal,
         });
 
         if (!response.ok) throw new Error("Failed to fetch address suggestions");
 
-        const data: PhotonResponse = await response.json();
-        const mapped = (data.features || []).map(photonToNominatim);
+        const data: GeocodioResponse = await response.json();
+        const mapped = (data.results || []).map(geocodioToNominatim);
         setSuggestions(mapped);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
@@ -111,7 +127,7 @@ export function usePhotonSearch(
 
     fetchSuggestions();
     return () => controller.abort();
-  }, [debouncedQuery, biasLocation, limit]);
+  }, [debouncedQuery, limit]);
 
   const search = useCallback((newQuery: string) => setQuery(newQuery), []);
 
