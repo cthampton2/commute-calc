@@ -84,12 +84,7 @@ export function usePhotonSearch(
           q: debouncedQuery,
           limit: limit.toString(),
           lang: "en",
-          layer: "house,street,city",
-          // Restrict to US
-          "osm_tag": "!historic",
         });
-
-        params.append("countrycodes", "us");
 
         if (biasLocation) {
           params.append("lat", String(biasLocation.lat));
