@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Location,
   RouteResult,
@@ -19,13 +19,52 @@ import {
 const ORS_BASE_URL = "https://api.openrouteservice.org/v2/directions/driving-car";
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
 
-// Find-nearest configuration
 const FIND_NEAREST_RADIUS_MILES = 10;
 const FIND_NEAREST_MAX_CANDIDATES = 5;
 
+// Route result cache
+const ROUTE_CACHE_KEY = "commute-route-cache";
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface CacheEntry {
+  result: RouteResult;
+  cachedAt: number;
+}
+
+interface RouteCache {
+  [key: string]: CacheEntry;
+}
+
+function routeCacheKey(from: Coordinates, to: Coordinates): string {
+  const r = (n: number) => Math.round(n * 100000) / 100000;
+  return `${r(from.lon)},${r(from.lat)}->${r(to.lon)},${r(to.lat)}`;
+}
+
+function loadRouteCache(): RouteCache {
+  try {
+    const raw = localStorage.getItem(ROUTE_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as RouteCache) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveRouteCache(cache: RouteCache): void {
+  try {
+    const now = Date.now();
+    const pruned: RouteCache = {};
+    for (const [k, v] of Object.entries(cache)) {
+      if (now - v.cachedAt < CACHE_TTL_MS) pruned[k] = v;
+    }
+    localStorage.setItem(ROUTE_CACHE_KEY, JSON.stringify(pruned));
+  } catch {
+    // localStorage full or unavailable
+  }
+}
+
 interface UseRouteCalculationResult {
   matrix: CommuteMatrix;
-  resolvedPOIs: Location[]; // POIs with resolvedLocations populated
+  resolvedPOIs: Location[];
   isCalculating: boolean;
   error: string | null;
   progress: { current: number; total: number; currentRoute: string; phase: string };
@@ -36,44 +75,24 @@ interface UseRouteCalculationResult {
   clearMatrix: () => void;
 }
 
-/**
- * Execute tasks sequentially with delay between each (for rate limiting)
- */
 async function executeSequentially<T>(
   tasks: Array<{ task: () => Promise<T>; label: string }>,
   delayMs: number,
   onProgress?: (completed: number, label: string) => void
 ): Promise<T[]> {
   const results: T[] = [];
-
   for (let i = 0; i < tasks.length; i++) {
     const { task, label } = tasks[i];
-
-    // Report progress before starting this task
-    if (onProgress) {
-      onProgress(i, label);
-    }
-
-    const result = await task();
-    results.push(result);
-
-    // Add delay between requests (except after the last one)
+    if (onProgress) onProgress(i, label);
+    results.push(await task());
     if (i < tasks.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
-
-  // Final progress update
-  if (onProgress) {
-    onProgress(tasks.length, "Complete");
-  }
-
+  if (onProgress) onProgress(tasks.length, "Complete");
   return results;
 }
 
-/**
- * Search for nearest business matching query within radius of center
- */
 async function searchNearestBusiness(
   searchQuery: string,
   center: Coordinates
@@ -86,63 +105,43 @@ async function searchNearestBusiness(
       addressdetails: "1",
       limit: FIND_NEAREST_MAX_CANDIDATES.toString(),
       countrycodes: "us",
-      viewbox: viewbox,
-      bounded: "1", // Strictly limit to viewbox
+      viewbox,
+      bounded: "1",
     });
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     const response = await fetch(`${NOMINATIM_BASE_URL}?${params.toString()}`, {
-      headers: {
-        "User-Agent": "RealEstateToolkit/1.0",
-      },
+      headers: { "User-Agent": "RealEstateToolkit/1.0" },
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      console.error(`Nominatim search failed: ${response.status}`);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const results: NominatimResult[] = await response.json();
+    if (!results || results.length === 0) return null;
 
-    if (!results || results.length === 0) {
-      return null;
-    }
-
-    // Find the nearest result by distance
     let nearest: NominatimResult | null = null;
     let nearestDistance = Infinity;
-
     for (const result of results) {
-      const resultCoords: Coordinates = {
-        lat: parseFloat(result.lat),
-        lon: parseFloat(result.lon),
-      };
-      const distance = calculateDistanceMeters(center, resultCoords);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
+      const coords: Coordinates = { lat: parseFloat(result.lat), lon: parseFloat(result.lon) };
+      const dist = calculateDistanceMeters(center, coords);
+      if (dist < nearestDistance) {
+        nearestDistance = dist;
         nearest = result;
       }
     }
 
-    if (!nearest) {
-      return null;
-    }
+    if (!nearest) return null;
 
     return {
-      startingLocationId: "", // Will be set by caller
+      startingLocationId: "",
       address: formatNominatimAddress(nearest),
       businessName: extractNominatimBusinessName(nearest) || nearest.name,
-      coordinates: {
-        lat: parseFloat(nearest.lat),
-        lon: parseFloat(nearest.lon),
-      },
+      coordinates: { lat: parseFloat(nearest.lat), lon: parseFloat(nearest.lon) },
     };
-  } catch (err) {
-    console.error(`Failed to search for ${searchQuery}:`, err);
+  } catch {
     return null;
   }
 }
@@ -159,6 +158,9 @@ export function useRouteCalculation(): UseRouteCalculationResult {
     phase: "",
   });
 
+  // Tracks completed route count for progress during parallel execution
+  const completedRoutesRef = useRef(0);
+
   const fetchSingleRoute = useCallback(
     async (
       from: Location,
@@ -172,9 +174,7 @@ export function useRouteCalculation(): UseRouteCalculationResult {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         const response = await fetch(url, {
-          headers: {
-            Authorization: process.env.NEXT_PUBLIC_ORS_API_KEY ?? "",
-          },
+          headers: { Authorization: process.env.NEXT_PUBLIC_ORS_API_KEY ?? "" },
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -189,23 +189,17 @@ export function useRouteCalculation(): UseRouteCalculationResult {
         const summary = feature?.properties?.summary;
         const coords: [number, number][] = feature?.geometry?.coordinates ?? [];
 
-        if (!summary || coords.length === 0) {
-          console.error(`No route found ${from.nickname} -> ${toNickname}`);
-          return null;
-        }
+        if (!summary || coords.length === 0) return null;
 
-        // ORS returns [lon, lat]; our RouteResult type expects [lat, lon]
         const geometry: [number, number][] = coords.map(([lon, lat]) => [lat, lon]);
-
         return {
           fromId: from.id,
-          toId: toId,
+          toId,
           durationSeconds: summary.duration,
           distanceMeters: summary.distance,
           geometry,
         };
-      } catch (err) {
-        console.error(`Failed to fetch route ${from.nickname} -> ${toNickname}:`, err);
+      } catch {
         return null;
       }
     },
@@ -221,12 +215,10 @@ export function useRouteCalculation(): UseRouteCalculationResult {
 
       setIsCalculating(true);
       setError(null);
+      setMatrix({});
+      completedRoutesRef.current = 0;
 
-      // Separate find-nearest POIs from regular POIs
       const findNearestPOIs = pointsOfInterest.filter((p) => p.isFindNearest);
-      const regularPOIs = pointsOfInterest.filter((p) => !p.isFindNearest);
-
-      // Calculate total tasks for progress
       const resolutionTasks = findNearestPOIs.length * startingLocations.length;
       const routeTasks = startingLocations.length * pointsOfInterest.length;
       const totalTasks = resolutionTasks + routeTasks;
@@ -239,16 +231,12 @@ export function useRouteCalculation(): UseRouteCalculationResult {
       });
 
       try {
-        // Phase 1: Resolve find-nearest POIs
+        // Phase 1: Resolve find-nearest POIs (sequential — Nominatim rate limit)
         const resolvedPOIsCopy: Location[] = [...pointsOfInterest];
 
         if (findNearestPOIs.length > 0) {
           const resolutionTaskList: Array<{
-            task: () => Promise<{
-              poiId: string;
-              startId: string;
-              resolved: ResolvedLocation | null;
-            }>;
+            task: () => Promise<{ poiId: string; startId: string; resolved: ResolvedLocation | null }>;
             label: string;
           }> = [];
 
@@ -260,24 +248,17 @@ export function useRouteCalculation(): UseRouteCalculationResult {
                     poi.searchQuery || poi.nickname,
                     start.coordinates
                   );
-                  if (resolved) {
-                    resolved.startingLocationId = start.id;
-                  }
-                  return {
-                    poiId: poi.id,
-                    startId: start.id,
-                    resolved,
-                  };
+                  if (resolved) resolved.startingLocationId = start.id;
+                  return { poiId: poi.id, startId: start.id, resolved };
                 },
                 label: `Finding ${poi.searchQuery || poi.nickname} near ${start.nickname}`,
               });
             }
           }
 
-          // Execute resolution tasks with rate limiting
           const resolutionResults = await executeSequentially(
             resolutionTaskList,
-            1100, // Same rate limit as OSRM
+            1100,
             (completed, label) => {
               setProgress({
                 current: completed,
@@ -288,16 +269,12 @@ export function useRouteCalculation(): UseRouteCalculationResult {
             }
           );
 
-          // Update POIs with resolved locations
           for (const { poiId, resolved } of resolutionResults) {
             if (resolved) {
-              const poiIndex = resolvedPOIsCopy.findIndex((p) => p.id === poiId);
-              if (poiIndex !== -1) {
-                const poi = resolvedPOIsCopy[poiIndex];
-                if (!poi.resolvedLocations) {
-                  poi.resolvedLocations = [];
-                }
-                // Remove existing resolution for this starting location
+              const idx = resolvedPOIsCopy.findIndex((p) => p.id === poiId);
+              if (idx !== -1) {
+                const poi = resolvedPOIsCopy[idx];
+                if (!poi.resolvedLocations) poi.resolvedLocations = [];
                 poi.resolvedLocations = poi.resolvedLocations.filter(
                   (r) => r.startingLocationId !== resolved.startingLocationId
                 );
@@ -309,77 +286,85 @@ export function useRouteCalculation(): UseRouteCalculationResult {
 
         setResolvedPOIs(resolvedPOIsCopy);
 
-        // Phase 2: Calculate routes
+        // Phase 2: Calculate all routes in parallel
         setProgress({
           current: resolutionTasks,
           total: totalTasks,
-          currentRoute: "Starting route calculation...",
+          currentRoute: "Calculating routes...",
           phase: "Calculating routes",
         });
 
-        const routeTaskList: Array<{
-          task: () => Promise<{ fromId: string; toId: string; result: RouteResult | null }>;
-          label: string;
-        }> = [];
+        const cache = loadRouteCache();
+        const updatedCache = { ...cache };
+
+        const routePromises = [];
 
         for (const start of startingLocations) {
           for (const poi of resolvedPOIsCopy) {
-            // Determine destination coordinates
             let destCoordinates = poi.coordinates;
             let destNickname = poi.nickname;
 
             if (poi.isFindNearest && poi.resolvedLocations) {
-              const resolved = poi.resolvedLocations.find(
-                (r) => r.startingLocationId === start.id
-              );
+              const resolved = poi.resolvedLocations.find((r) => r.startingLocationId === start.id);
               if (resolved) {
                 destCoordinates = resolved.coordinates;
                 destNickname = `${poi.nickname} (${resolved.businessName || resolved.address})`;
               }
             }
 
-            routeTaskList.push({
-              task: async () => ({
-                fromId: start.id,
-                toId: poi.id,
-                result: await fetchSingleRoute(start, destCoordinates, poi.id, destNickname),
-              }),
-              label: `${start.nickname} → ${poi.nickname}`,
-            });
+            const fromId = start.id;
+            const toId = poi.id;
+            const cachedResult = cache[routeCacheKey(start.coordinates, destCoordinates)];
+            const isCacheHit =
+              cachedResult && Date.now() - cachedResult.cachedAt < CACHE_TTL_MS;
+
+            const promise = (async () => {
+              let result: RouteResult | null;
+
+              if (isCacheHit) {
+                // Rehydrate IDs in case locations changed nicknames but not coordinates
+                result = { ...cachedResult.result, fromId, toId };
+              } else {
+                result = await fetchSingleRoute(start, destCoordinates, toId, destNickname);
+                if (result) {
+                  updatedCache[routeCacheKey(start.coordinates, destCoordinates)] = {
+                    result,
+                    cachedAt: Date.now(),
+                  };
+                }
+              }
+
+              // Update matrix incrementally as each route resolves
+              if (result) {
+                setMatrix((prev) => ({
+                  ...prev,
+                  [fromId]: { ...prev[fromId], [toId]: result },
+                }));
+              }
+
+              completedRoutesRef.current += 1;
+              setProgress({
+                current: resolutionTasks + completedRoutesRef.current,
+                total: totalTasks,
+                currentRoute: `${start.nickname} → ${poi.nickname}`,
+                phase: "Calculating routes",
+              });
+
+              return { fromId, toId, result };
+            })();
+
+            routePromises.push(promise);
           }
         }
 
-        // Execute route tasks with rate limiting
-        const routeResults = await executeSequentially(
-          routeTaskList,
-          1100,
-          (completed, label) => {
-            setProgress({
-              current: resolutionTasks + completed,
-              total: totalTasks,
-              currentRoute: label,
-              phase: "Calculating routes",
-            });
-          }
-        );
+        const routeResults = await Promise.all(routePromises);
+        saveRouteCache(updatedCache);
 
-        // Build the matrix from results
-        const newMatrix: CommuteMatrix = {};
-
-        for (const { fromId, toId, result } of routeResults) {
-          if (!newMatrix[fromId]) {
-            newMatrix[fromId] = {};
-          }
-          newMatrix[fromId][toId] = result;
-        }
-
-        const allFailed = routeResults.length > 0 && routeResults.every(({ result }) => result === null);
+        const allFailed =
+          routeResults.length > 0 && routeResults.every(({ result }) => result === null);
         if (allFailed) {
           setError("Could not reach the routing service. Please check your connection and try again.");
-          return;
         }
-
-        setMatrix(newMatrix);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to calculate routes");
       } finally {

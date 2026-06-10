@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { NominatimResult, Coordinates } from "../types";
+import { NominatimResult, PhotonFeature, PhotonResponse, Coordinates } from "../types";
 
-const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
+const PHOTON_BASE_URL = "https://photon.komoot.io/api/";
 
 interface UsePhotonSearchOptions {
   biasLocation?: Coordinates | null;
@@ -19,6 +19,38 @@ interface UsePhotonSearchResult {
   clearSuggestions: () => void;
 }
 
+function photonToNominatim(feature: PhotonFeature, index: number): NominatimResult {
+  const p = feature.properties;
+  const streetPart =
+    p.housenumber && p.street
+      ? `${p.housenumber} ${p.street}`
+      : p.street || "";
+  const parts = [streetPart, p.city, p.state, p.postcode].filter(Boolean);
+  const displayName = p.name ? `${p.name}, ${parts.join(", ")}` : parts.join(", ");
+
+  return {
+    place_id: p.osm_id || index,
+    licence: "",
+    osm_type: "N",
+    osm_id: p.osm_id || index,
+    lat: String(feature.geometry.coordinates[1]),
+    lon: String(feature.geometry.coordinates[0]),
+    display_name: displayName,
+    address: {
+      house_number: p.housenumber,
+      road: p.street,
+      city: p.city,
+      state: p.state,
+      postcode: p.postcode,
+      country: p.country,
+    },
+    boundingbox: ["0", "0", "0", "0"],
+    name: p.name,
+    type: "photon",
+    class: "photon",
+  };
+}
+
 export function usePhotonSearch(
   options: UsePhotonSearchOptions = {}
 ): UsePhotonSearchResult {
@@ -30,16 +62,11 @@ export function usePhotonSearch(
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
-  // Debounce the query
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, debounceMs);
-
+    const timer = setTimeout(() => setDebouncedQuery(query), debounceMs);
     return () => clearTimeout(timer);
   }, [query, debounceMs]);
 
-  // Fetch suggestions when debounced query changes
   useEffect(() => {
     if (!debouncedQuery || debouncedQuery.length < 2) {
       setSuggestions([]);
@@ -55,39 +82,31 @@ export function usePhotonSearch(
       try {
         const params = new URLSearchParams({
           q: debouncedQuery,
-          format: "json",
-          addressdetails: "1",
           limit: limit.toString(),
-          countrycodes: "us",
+          lang: "en",
+          layer: "house,street,city",
+          // Restrict to US
+          "osm_tag": "!historic",
         });
 
-        // Add viewbox bias if location is available (prioritizes results near this location)
+        params.append("countrycodes", "us");
+
         if (biasLocation) {
-          const delta = 0.5; // ~50km radius
-          params.append(
-            "viewbox",
-            `${biasLocation.lon - delta},${biasLocation.lat + delta},${biasLocation.lon + delta},${biasLocation.lat - delta}`
-          );
-          params.append("bounded", "0"); // Don't strictly limit to viewbox, just bias
+          params.append("lat", String(biasLocation.lat));
+          params.append("lon", String(biasLocation.lon));
         }
 
-        const response = await fetch(`${NOMINATIM_BASE_URL}?${params.toString()}`, {
+        const response = await fetch(`${PHOTON_BASE_URL}?${params.toString()}`, {
           signal: controller.signal,
-          headers: {
-            "User-Agent": "RealEstateToolkit/1.0",
-          },
         });
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch address suggestions");
-        }
+        if (!response.ok) throw new Error("Failed to fetch address suggestions");
 
-        const data: NominatimResult[] = await response.json();
-        setSuggestions(data || []);
+        const data: PhotonResponse = await response.json();
+        const mapped = (data.features || []).map(photonToNominatim);
+        setSuggestions(mapped);
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          return; // Ignore aborted requests
-        }
+        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : "An error occurred");
         setSuggestions([]);
       } finally {
@@ -96,24 +115,15 @@ export function usePhotonSearch(
     };
 
     fetchSuggestions();
-
     return () => controller.abort();
   }, [debouncedQuery, biasLocation, limit]);
 
-  const search = useCallback((newQuery: string) => {
-    setQuery(newQuery);
-  }, []);
+  const search = useCallback((newQuery: string) => setQuery(newQuery), []);
 
   const clearSuggestions = useCallback(() => {
     setSuggestions([]);
     setQuery("");
   }, []);
 
-  return {
-    suggestions,
-    isLoading,
-    error,
-    search,
-    clearSuggestions,
-  };
+  return { suggestions, isLoading, error, search, clearSuggestions };
 }
