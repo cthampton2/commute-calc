@@ -2,24 +2,24 @@ import { Metadata } from "next";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "Commute Map Calculator — Compare Driving Times from Multiple Locations",
+  title: "Commute Comparison Tool — Compare Driving Times from Multiple Addresses",
   description:
-    "Stop checking Google Maps one address at a time. Add the homes you're comparing, enter your workplace, and see every commute side-by-side on an interactive map. Free, no sign-up.",
+    "Compare commute times from multiple home addresses to your workplace side-by-side. Stop checking Google Maps one address at a time — see every route at once. Free, no sign-up.",
   alternates: {
     canonical: "/tools/commute-comparison",
   },
   openGraph: {
-    title: "Commute Map Calculator | CommuteCalc",
+    title: "Commute Comparison Tool | CommuteCalc",
     description:
-      "Stop checking Google Maps one address at a time. Add the homes you're comparing, enter your workplace, and see every commute side-by-side on a map. Free, no sign-up.",
+      "Compare commute times from multiple home addresses to your workplace side-by-side. See every route at once. Free, no sign-up.",
     url: "https://commutecalc.com/tools/commute-comparison",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Commute Map Calculator | CommuteCalc",
+    title: "Commute Comparison Tool | CommuteCalc",
     description:
-      "Stop checking Google Maps one address at a time. Add the homes you're comparing, enter your workplace, and see every commute side-by-side on a map. Free, no sign-up.",
+      "Compare commute times from multiple home addresses to your workplace side-by-side. See every route at once. Free, no sign-up.",
   },
 };
 

@@ -22,9 +22,6 @@ export const metadata: Metadata = {
   description:
     "Compare driving commute times from multiple home locations to your workplace and points of interest. Find the best place to live based on your daily commute.",
   metadataBase: new URL("https://www.commutecalc.com"),
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     title: "CommuteCalc - Compare Commute Times",
     description:

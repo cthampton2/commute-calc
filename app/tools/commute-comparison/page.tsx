@@ -26,7 +26,7 @@ export default function CommuteComparisonPage() {
   const [startingLocations, setStartingLocations] = useState<Location[]>([]);
   const [pointsOfInterest, setPointsOfInterest] = useState<Location[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [showMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const [selectedRoute, setSelectedRoute] = useState<SelectedRoute | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -157,13 +157,13 @@ export default function CommuteComparisonPage() {
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight mb-1">
-              Before you sign,{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400">
-                know your commute.
-              </span>
+                Compare commute times
+              </span>{" "}
+              from every home at once.
             </h1>
             <p className="text-slate-500 text-xs leading-relaxed">
-              Add homes and destinations below — every route calculated at once.
+              Add homes and destinations below — every route calculated side-by-side.
             </p>
           </div>
           <span className="hidden sm:inline-flex shrink-0 items-center gap-1 px-2 py-1 rounded-md border border-blue-500/20 bg-blue-950/30 text-[10px] font-mono text-blue-400 tracking-wide whitespace-nowrap mt-0.5">
